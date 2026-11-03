@@ -1,50 +1,234 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <base target="_top">
-    <?!= include('Styles'); ?>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  </head>
-  <body>
-    <!-- Main Dashboard -->
-    <div id="main-view" class="container">
-      <div class="panel left-panel">
-        <h2>Target Behaviors</h2>
-        <ul id="behavior-list" class="list"></ul>
-        <button class="btn primary" onclick="openModal()">Add Target Behavior</button>
-      </div>
-      <div class="panel right-panel">
-        <h2>Students</h2>
-        <div id="student-list" class="button-grid"></div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Behavior Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7f6; --surface: #ffffff; --primary: #2563eb;
+      --text: #1e293b; --border: #e2e8f0;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; padding: 20px; background: var(--bg); color: var(--text);
+    }
+    .container { display: flex; gap: 20px; height: 90vh; }
+    .panel {
+      background: var(--surface); padding: 20px; border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex: 1; overflow-y: auto;
+    }
+    .hidden { display: none !important; }
+    .list { list-style: none; padding: 0; margin-bottom: 20px; }
+    .list li {
+      padding: 12px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .badge { background: var(--border); padding: 4px 10px; border-radius: 12px; font-size: 0.9em; }
+    .button-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .btn {
+      padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer;
+      background: var(--border); font-size: 1em; transition: 0.2s;
+    }
+    .btn:hover { background: #cbd5e1; }
+    .btn.primary { background: var(--primary); color: white; }
+    .btn.primary:hover { background: #1d4ed8; }
+    .btn.add-btn { background: #22c55e; color: white; font-weight: bold; border-radius: 50%; width: 32px; height: 32px; padding: 0;}
+    
+    .modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+    }
+    .modal-content { background: var(--surface); padding: 25px; border-radius: 8px; width: 300px; }
+    .modal-content input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid var(--border); border-radius: 4px;}
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+
+    .charts-panel { display: flex; flex-direction: column; gap: 20px; }
+    .chart-container { height: 250px; width: 100%; position: relative; }
+  </style>
+</head>
+<body>
+
+  <!-- Main Dashboard -->
+  <div id="main-view" class="container">
+    <div class="panel left-panel">
+      <h2>Target Behaviors</h2>
+      <ul id="behavior-list" class="list"></ul>
+      <button class="btn primary" onclick="openModal()">Add Target Behavior</button>
+    </div>
+    <div class="panel right-panel">
+      <h2>Students</h2>
+      <div id="student-list" class="button-grid"></div>
+    </div>
+  </div>
+
+  <!-- Student Detail View -->
+  <div id="student-view" class="container hidden">
+    <div class="panel left-panel">
+      <button class="btn" onclick="goBack()">← Back</button>
+      <h2 id="student-title">Student Behaviors</h2>
+      <ul id="student-behavior-list" class="list"></ul>
+    </div>
+    <div class="panel right-panel charts-panel">
+      <div class="chart-container"><canvas id="pieChart"></canvas></div>
+      <div class="chart-container"><canvas id="timeChart"></canvas></div>
+      <div class="chart-container"><canvas id="dayChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Add Behavior Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>New Target Behavior</h3>
+      <input type="text" id="new-behavior-input" placeholder="Enter behavior name...">
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn primary" onclick="submitBehavior()">Submit</button>
       </div>
     </div>
+  </div>
 
-    <!-- Student Detail View -->
-    <div id="student-view" class="container hidden">
-      <div class="panel left-panel">
-        <button class="btn" onclick="goBack()">← Back</button>
-        <h2 id="student-title">Student Behaviors</h2>
-        <ul id="student-behavior-list" class="list"></ul>
-      </div>
-      <div class="panel right-panel charts-panel">
-        <div class="chart-container"><canvas id="pieChart"></canvas></div>
-        <div class="chart-container"><canvas id="timeChart"></canvas></div>
-        <div class="chart-container"><canvas id="dayChart"></canvas></div>
-      </div>
-    </div>
+  <script>
+    // REPLACE THIS WITH YOUR DEPLOYED APPS SCRIPT EXEC URL
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxHJg2r1zkY5PgAYPYA-DiSHfgeu1A-nvkkDm5FXHoGCJRENx-f9kphPSEq300XqLk/exec';
 
-    <!-- Add Behavior Modal -->
-    <div id="modal" class="modal hidden">
-      <div class="modal-content">
-        <h3>New Target Behavior</h3>
-        <input type="text" id="new-behavior-input" placeholder="Enter behavior name...">
-        <div class="modal-actions">
-          <button class="btn" onclick="closeModal()">Cancel</button>
-          <button class="btn primary" onclick="submitBehavior()">Submit</button>
-        </div>
-      </div>
-    </div>
+    let charts = {};
 
-    <?!= include('Script'); ?>
-  </body>
+    window.onload = () => {
+      fetch(`${API_URL}?action=getInitialData`)
+        .then(res => res.json())
+        .then(renderMainView);
+    };
+
+    function renderMainView(data) {
+      const bList = document.getElementById('behavior-list');
+      bList.innerHTML = data.behaviors.map(b => `<li>${b}</li>`).join('');
+
+      const sList = document.getElementById('student-list');
+      sList.innerHTML = data.students.map(s => 
+        `<button class="btn" onclick="loadStudent('${s}')">${s}</button>`
+      ).join('');
+    }
+
+    function openModal() { document.getElementById('modal').classList.remove('hidden'); }
+    function closeModal() { 
+      document.getElementById('modal').classList.add('hidden');
+      document.getElementById('new-behavior-input').value = '';
+    }
+
+    function submitBehavior() {
+      const val = document.getElementById('new-behavior-input').value.trim();
+      if (!val) return;
+      closeModal();
+
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'addBehavior', behavior: val })
+      })
+      .then(res => res.json())
+      .then(renderMainView);
+    }
+
+    function loadStudent(name) {
+      document.getElementById('main-view').classList.add('hidden');
+      document.getElementById('student-view').classList.remove('hidden');
+      document.getElementById('student-title').innerText = `${name}'s Behaviors`;
+      document.getElementById('student-behavior-list').innerHTML = '<li>Loading...</li>';
+
+      fetch(`${API_URL}?action=getStudentData&studentName=${encodeURIComponent(name)}`)
+        .then(res => res.json())
+        .then(renderStudentView);
+    }
+
+    function goBack() {
+      document.getElementById('student-view').classList.add('hidden');
+      document.getElementById('main-view').classList.remove('hidden');
+    }
+
+    function addInstance(studentName, colIndex) {
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'addBehaviorInstance', studentName, colIndex })
+      })
+      .then(res => res.json())
+      .then(renderStudentView);
+    }
+
+    function renderStudentView(data) {
+      if (!data) return;
+      
+      const list = document.getElementById('student-behavior-list');
+      list.innerHTML = data.behaviors.map(b => `
+        <li>
+          <span>${b.name} <span class="badge">${b.count}</span></span>
+          <button class="btn add-btn" onclick="addInstance('${data.studentName}', ${b.colIndex})">+</button>
+        </li>
+      `).join('');
+
+      renderCharts(data);
+    }
+
+    function renderCharts(data) {
+      ['pieChart', 'timeChart', 'dayChart'].forEach(id => {
+        if (charts[id]) charts[id].destroy();
+      });
+
+      const pieCtx = document.getElementById('pieChart').getContext('2d');
+      charts['pieChart'] = new Chart(pieCtx, {
+        type: 'pie',
+        data: {
+          labels: data.behaviors.map(b => b.name),
+          datasets: [{ data: data.behaviors.map(b => b.count) }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      const timeBins = Array(31).fill(0);
+      const dayBins = Array(5).fill(0);
+
+      data.timestamps.forEach(ts => {
+        const d = new Date(ts.time);
+        const day = d.getDay();
+        if (day >= 1 && day <= 5) dayBins[day - 1]++;
+        
+        const h = d.getHours();
+        const m = d.getMinutes();
+        if (h >= 8 && h <= 15) {
+          if (h === 15 && m > 30) return;
+          const minSince8 = (h - 8) * 60 + m;
+          const binIndex = Math.floor(minSince8 / 15);
+          if (binIndex >= 0 && binIndex < 31) timeBins[binIndex]++;
+        }
+      });
+
+      const timeLabels = Array.from({length: 31}, (_, i) => {
+        const mins = i * 15;
+        const h = 8 + Math.floor(mins / 60);
+        const m = (mins % 60).toString().padStart(2, '0');
+        return `${h}:${m}`;
+      });
+
+      const timeCtx = document.getElementById('timeChart').getContext('2d');
+      charts['timeChart'] = new Chart(timeCtx, {
+        type: 'bar',
+        data: {
+          labels: timeLabels,
+          datasets: [{ label: 'Incidents (8:00 - 3:30)', data: timeBins, backgroundColor: '#3b82f6' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      const dayCtx = document.getElementById('dayChart').getContext('2d');
+      charts['dayChart'] = new Chart(dayCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+          datasets: [{ label: 'Incidents by Day', data: dayBins, backgroundColor: '#8b5cf6' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+  </script>
+</body>
 </html>
